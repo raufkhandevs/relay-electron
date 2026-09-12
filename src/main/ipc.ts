@@ -40,7 +40,14 @@ export function registerIpcHandlers(): void {
       password: assertString(password, 'password'),
       device_name: 'relay-desktop'
     })
-    setToken(result.token)
+    try {
+      setToken(result.token)
+    } catch (error) {
+      // The token already exists on the server. If we cannot store it, revoke it rather
+      // than leave a live credential nobody holds a reference to.
+      await api.delete('/tokens/current').catch(() => undefined)
+      throw error
+    }
     // Only the User crosses the bridge. The token stops here.
     return result.user
   })

@@ -19,8 +19,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init.headers
+      ...init.headers,
+      // Last, deliberately. No caller should be able to overwrite or unset the bearer
+      // header by passing its own headers object.
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
     }
   })
 

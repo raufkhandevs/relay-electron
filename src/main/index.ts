@@ -4,6 +4,25 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerIpcHandlers } from './ipc'
 
+/** http and https only. Anything else is refused rather than handed to the OS. */
+function isExternallyOpenable(url: string): boolean {
+  try {
+    const protocol = new URL(url).protocol
+    return protocol === 'http:' || protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+/** Same-origin comparison that treats an unparseable URL as foreign. */
+function isSameOrigin(candidate: string, current: string): boolean {
+  try {
+    return new URL(candidate).origin === new URL(current).origin
+  } catch {
+    return false
+  }
+}
+
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -24,9 +43,25 @@ function createWindow(): void {
     mainWindow.show()
   })
 
+  // Only ever hand http(s) to the OS. The scaffold forwarded whatever the renderer
+  // asked for, so a compromised renderer could open file:// to launch a local app, or
+  // smb:// to trigger an outbound auth attempt.
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+    if (isExternallyOpenable(details.url)) {
+      shell.openExternal(details.url)
+    }
     return { action: 'deny' }
+  })
+
+  // The second wall behind the token boundary. Nothing stops a renderer from setting
+  // document.location: CSP does not constrain top-level navigation. Without this, an
+  // attacker origin would load into this window, inherit the preload, and call
+  // window.relay.tickets() with main dutifully attaching the bearer token. The renderer
+  // never holding the token would not save us; the data would still walk out.
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!isSameOrigin(url, mainWindow.webContents.getURL())) {
+      event.preventDefault()
+    }
   })
 
   // HMR for renderer base on electron-vite cli.

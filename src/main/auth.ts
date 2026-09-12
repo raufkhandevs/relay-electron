@@ -29,7 +29,9 @@ export function getToken(): string | null {
 export function setToken(token: string): void {
   requireEncryption()
   const ciphertext = safeStorage.encryptString(token)
-  writeFileSync(TOKEN_FILE(), ciphertext)
+  // Explicit 0600. The default 0644 is harmless while userData is 0700, but the
+  // mode should not depend on a parent directory nobody here controls.
+  writeFileSync(TOKEN_FILE(), ciphertext, { mode: 0o600 })
 }
 
 export function clearToken(): void {
