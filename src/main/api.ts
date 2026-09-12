@@ -26,7 +26,20 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   if (!response.ok) {
     const body = await response.text()
-    throw new ApiError(response.status, body || response.statusText)
+    // Laravel's JSON error responses (validation failures, throttling) carry a
+    // human-readable `message` field. Custom Error properties like ApiError.status
+    // don't survive the ipcMain -> ipcRenderer trip, only the message text does, so
+    // this is where the message needs to already be readable.
+    let message = body || response.statusText
+    try {
+      const parsed = JSON.parse(body) as { message?: unknown }
+      if (typeof parsed.message === 'string') {
+        message = parsed.message
+      }
+    } catch {
+      // Not JSON; fall back to the raw body/status text already set above.
+    }
+    throw new ApiError(response.status, message)
   }
 
   if (response.status === 204) {
