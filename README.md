@@ -7,6 +7,26 @@ One of four repos. The parent, [raufkhandevs/relay](https://github.com/raufkhand
 the design and decision records. The API and websocket server are in
 [relay-laravel](https://github.com/raufkhandevs/relay-laravel) and must be running.
 
+## Progress
+
+```
+Login, token in main      ████████████████████  done
+Ticket queue and thread   ████████████████████  done
+Live messages             ████████████████████  done
+Reply and drag-drop files ████████████████████  done
+Light and dark            ████████████████████  done
+Typing indicator          ░░░░░░░░░░░░░░░░░░░░  next
+Tray, badge, hotkey       ░░░░░░░░░░░░░░░░░░░░
+Auto-update               ░░░░░░░░░░░░░░░░░░░░  blocked
+```
+
+**Owed.** Upload progress is an indeterminate spinner rather than a percentage. Real progress needs
+a main-to-renderer push channel, and the bridge stays deliberately narrow.
+
+**Blocked, not forgotten.** Signing, notarisation and therefore auto-update all need a paid Apple
+Developer Program membership. Without it the app runs here and nowhere else, and electron-updater
+cannot complete an update because Squirrel verifies the signature first.
+
 ## Running it
 
 Backend first, in its own checkout:
