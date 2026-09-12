@@ -18,6 +18,30 @@
   --status-closed: #8a8f98;
 
   --muted: color-mix(in oklab, var(--ink) 55%, var(--ground));
+
+  /* The tint behind the agent's own messages. A fixed accent opacity cannot
+     serve both themes, so each theme sets its own mix. See 0009. */
+  --surface-own: color-mix(in oklab, var(--accent) 12%, var(--surface));
+}
+
+/* The dark palette from 0009. Not an inversion: the ground is lifted off black,
+   text stops short of pure white, and the accent and status colours are lifted
+   because the light ones are close to invisible on a dark ground. Everything
+   else in this file derives from these, so there are no other dark overrides.
+   Electron follows the OS through this media query; there is no in-app toggle. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e6eaf0;
+    --ground: #0e1319;
+    --surface: #161d26;
+    --rule: #242e3a;
+    --accent: #4fa8c4;
+    --status-open: #e0a159;
+    --status-pending: #8a96a6;
+    --status-resolved: #5cc489;
+    --status-closed: #6c7887;
+    --surface-own: color-mix(in oklab, var(--accent) 30%, var(--surface));
+  }
 }
 
 /* Self-hosted so the renderer's CSP (default-src 'self') never has to widen

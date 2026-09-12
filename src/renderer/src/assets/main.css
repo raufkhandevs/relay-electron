@@ -364,7 +364,7 @@ body {
 
 .message-agent .message-bubble {
   border-color: transparent;
-  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+  background: var(--surface-own);
 }
 
 .message-meta {
