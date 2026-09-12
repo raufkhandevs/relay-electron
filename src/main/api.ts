@@ -106,14 +106,21 @@ export const api = {
   /**
    * For GET /attachments/{id}: authorises, then redirects to a short-lived presigned
    * MinIO URL. fetch follows that redirect on its own, so this hands back the actual
-   * bytes rather than the storage URL - the renderer never sees, let alone holds,
-   * a link to the object store.
+   * bytes rather than the storage URL, and the renderer never holds a link to the
+   * object store.
+   *
+   * `Accept` must NOT be application/json here. That endpoint content-negotiates for
+   * the iOS client, which cannot read a redirect's Location without following it, and
+   * answers a JSON request with {url} instead of a 302. Asking for JSON here returned
+   * the signed URL as a JSON string, which the renderer then base64-encoded into a
+   * data: URI and rendered as a broken image, while also defeating the point of
+   * keeping that URL out of the renderer.
    */
   getBinary: async (path: string): Promise<Uint8Array> => {
     const token = getToken()
     const response = await fetch(`${API_BASE}/api${path}`, {
       headers: {
-        Accept: 'application/json',
+        Accept: '*/*',
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
     })
