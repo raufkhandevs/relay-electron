@@ -4,10 +4,16 @@ import { useDelayedFlag } from '../hooks'
 import { getEcho } from '../echo'
 import { formatTimestamp } from '../format'
 import MessageComposer from '../components/MessageComposer'
+import TypingBubble from '../components/TypingBubble'
 import { FileAttachment, ImageAttachment } from '../components/Attachment'
 import type { Message, Ticket, User } from '../../../shared/types'
 
 const SKELETON_ROWS = 4
+
+// Hide the bubble this long after the last whisper. Never wait for a
+// "stopped typing" message: the sender can close the laptop or lose signal
+// mid-word, and this is what keeps the bubble from getting stuck forever.
+const TYPING_EXPIRY_MS = 3000
 
 type PendingAttachment = { name: string; mime: string; bytes: Uint8Array }
 
@@ -24,29 +30,54 @@ type PendingMessage = {
  * `message.created` broadcast. Leaves the channel on unmount or when `ticketId`
  * changes, so navigating between tickets never accumulates subscriptions (which
  * would otherwise render the same message several times).
+ *
+ * Typing rides the same channel as a whisper: `channel.whisper()` and
+ * `.listenForWhisper()` go client -> Reverb -> client and never touch Laravel,
+ * so there is no IPC channel to add and no broadcast for `.listen()` to catch.
+ * Both sides are wired directly against the channel instance this hook
+ * already holds open.
  */
-function useTicketChannel(ticketId: number, onMessage: (message: Message) => void): void {
-  // Kept in a ref so the subscription effect only depends on ticketId, not on
+function useTicketChannel(
+  ticketId: number,
+  onMessage: (message: Message) => void,
+  onTyping: (name: string) => void
+): { whisperTyping: (name: string) => void } {
+  // Kept in refs so the subscription effect only depends on ticketId, not on
   // callers passing a new inline function every render.
   const onMessageRef = useRef(onMessage)
+  const onTypingRef = useRef(onTyping)
   useEffect(() => {
     onMessageRef.current = onMessage
+    onTypingRef.current = onTyping
   })
 
   useEffect(() => {
     const channelName = `ticket.${ticketId}`
     const echo = getEcho()
+    const channel = echo.private(channelName)
     // The leading dot is mandatory: without it Echo expects a fully qualified PHP
     // class name for the event and matches nothing, with no error anywhere.
-    echo.private(channelName).listen('.message.created', (message: Message) => {
+    channel.listen('.message.created', (message: Message) => {
       onMessageRef.current(message)
     })
+    const typingListener = ({ name }: { name: string }): void => onTypingRef.current(name)
+    channel.listenForWhisper('typing', typingListener)
 
     return () => {
-      echo.private(channelName).stopListening('.message.created')
+      channel.stopListening('.message.created')
+      channel.stopListeningForWhisper('typing', typingListener)
       echo.leave(channelName)
     }
   }, [ticketId])
+
+  const whisperTyping = useCallback(
+    (name: string) => {
+      getEcho().private(`ticket.${ticketId}`).whisper('typing', { name })
+    },
+    [ticketId]
+  )
+
+  return { whisperTyping }
 }
 
 function MessageAttachments({
@@ -86,6 +117,8 @@ export default function Thread({
   const [file, setFile] = useState<File | null>(null)
   const [isDragActive, setIsDragActive] = useState(false)
   const dragDepthRef = useRef(0)
+  const [typingName, setTypingName] = useState<string | null>(null)
+  const typingExpiryRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const append = useCallback(
     (incoming: Message) => {
@@ -107,7 +140,39 @@ export default function Thread({
     [user.id]
   )
 
-  useTicketChannel(ticket.id, append)
+  // Cleared and restarted on every whisper, so the bubble only disappears
+  // once TYPING_EXPIRY_MS has passed with no further whisper.
+  const handleTypingReceived = useCallback(
+    (name: string) => {
+      if (name === user.name) {
+        return
+      }
+
+      setTypingName(name)
+
+      if (typingExpiryRef.current) {
+        clearTimeout(typingExpiryRef.current)
+      }
+      typingExpiryRef.current = setTimeout(() => {
+        setTypingName(null)
+      }, TYPING_EXPIRY_MS)
+    },
+    [user.name]
+  )
+
+  useEffect(() => {
+    return () => {
+      if (typingExpiryRef.current) {
+        clearTimeout(typingExpiryRef.current)
+      }
+    }
+  }, [])
+
+  const { whisperTyping } = useTicketChannel(ticket.id, append, handleTypingReceived)
+
+  const sendTyping = useCallback(() => {
+    whisperTyping(user.name)
+  }, [whisperTyping, user.name])
 
   const performSend = useCallback(
     (clientId: string, body: string, attachment?: PendingAttachment) => {
@@ -256,13 +321,13 @@ export default function Thread({
         </div>
       )}
 
-      {!isPending && !isError && messages.length === 0 && pending.length === 0 && (
+      {!isPending && !isError && messages.length === 0 && pending.length === 0 && !typingName && (
         <div className="state-message" data-testid="thread-empty">
           <p>No messages yet.</p>
         </div>
       )}
 
-      {!isPending && !isError && (messages.length > 0 || pending.length > 0) && (
+      {!isPending && !isError && (messages.length > 0 || pending.length > 0 || typingName) && (
         <ul className="message-list" data-testid="message-list">
           {messages.map((message) => (
             <li
@@ -307,6 +372,8 @@ export default function Thread({
               </span>
             </li>
           ))}
+
+          {typingName && <TypingBubble name={typingName} />}
         </ul>
       )}
 
@@ -318,6 +385,7 @@ export default function Thread({
           send(body, attachedFile)
           setFile(null)
         }}
+        onTyping={sendTyping}
       />
     </div>
   )

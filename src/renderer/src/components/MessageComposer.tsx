@@ -1,20 +1,27 @@
-import { type KeyboardEvent, useRef, useState } from 'react'
+import { type ChangeEvent, type KeyboardEvent, useRef, useState } from 'react'
 import { formatFileSize } from '../format'
 import { ACCEPTED_ATTACHMENT_TYPES } from '../attachment-utils'
+
+// At most one whisper per second, leading edge: the first keystroke of a
+// burst fires immediately and the rest are swallowed until the second is up.
+const TYPING_THROTTLE_MS = 1000
 
 export default function MessageComposer({
   file,
   onFileChange,
   onFileClear,
-  onSend
+  onSend,
+  onTyping
 }: {
   file: File | null
   onFileChange: (file: File) => void
   onFileClear: () => void
   onSend: (body: string, file: File | null) => void
+  onTyping: () => void
 }): React.JSX.Element {
   const [body, setBody] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const lastTypingSentAt = useRef(0)
   const trimmed = body.trim()
   // Text, a file, or both. The API requires a body only when no file is present.
   const canSend = trimmed.length > 0 || file !== null
@@ -34,6 +41,16 @@ export default function MessageComposer({
     }
   }
 
+  function onBodyChange(event: ChangeEvent<HTMLTextAreaElement>): void {
+    setBody(event.target.value)
+
+    const now = Date.now()
+    if (now - lastTypingSentAt.current >= TYPING_THROTTLE_MS) {
+      lastTypingSentAt.current = now
+      onTyping()
+    }
+  }
+
   return (
     <div className="composer">
       <div className="composer-row">
@@ -41,7 +58,7 @@ export default function MessageComposer({
           data-testid="composer-body"
           className="composer-input"
           value={body}
-          onChange={(event) => setBody(event.target.value)}
+          onChange={onBodyChange}
           onKeyDown={onKeyDown}
           placeholder="Write a reply. Enter to send, Shift+Enter for a new line."
           rows={2}
