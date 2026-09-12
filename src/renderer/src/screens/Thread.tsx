@@ -1,17 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { type DragEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { readableError, useMessages } from '../queries'
 import { useDelayedFlag } from '../hooks'
 import { getEcho } from '../echo'
 import { formatTimestamp } from '../format'
 import MessageComposer from '../components/MessageComposer'
+import { FileAttachment, ImageAttachment } from '../components/Attachment'
 import type { Message, Ticket, User } from '../../../shared/types'
 
 const SKELETON_ROWS = 4
 
+type PendingAttachment = { name: string; mime: string; bytes: Uint8Array }
+
 type PendingMessage = {
   clientId: string
   body: string
+  attachment?: PendingAttachment
   status: 'sending' | 'failed'
+  error?: string
 }
 
 /**
@@ -44,6 +49,27 @@ function useTicketChannel(ticketId: number, onMessage: (message: Message) => voi
   }, [ticketId])
 }
 
+function MessageAttachments({
+  attachments
+}: {
+  attachments: Message['attachments']
+}): React.JSX.Element | null {
+  if (attachments.length === 0) {
+    return null
+  }
+  return (
+    <div className="message-attachments">
+      {attachments.map((attachment) =>
+        attachment.mime.startsWith('image/') ? (
+          <ImageAttachment key={attachment.id} attachment={attachment} />
+        ) : (
+          <FileAttachment key={attachment.id} attachment={attachment} />
+        )
+      )}
+    </div>
+  )
+}
+
 export default function Thread({
   ticket,
   user,
@@ -57,6 +83,9 @@ export default function Thread({
   const showSkeleton = useDelayedFlag(isPending)
   const [liveMessages, setLiveMessages] = useState<Message[]>([])
   const [pending, setPending] = useState<PendingMessage[]>([])
+  const [file, setFile] = useState<File | null>(null)
+  const [isDragActive, setIsDragActive] = useState(false)
+  const dragDepthRef = useRef(0)
 
   const append = useCallback(
     (incoming: Message) => {
@@ -80,37 +109,99 @@ export default function Thread({
 
   useTicketChannel(ticket.id, append)
 
-  const send = useCallback(
-    (body: string, clientId: string = crypto.randomUUID()) => {
-      setPending((current) => [
-        ...current.filter((p) => p.clientId !== clientId),
-        { clientId, body, status: 'sending' }
-      ])
-
+  const performSend = useCallback(
+    (clientId: string, body: string, attachment?: PendingAttachment) => {
       window.relay
-        .sendMessage(ticket.id, body, clientId)
+        .sendMessage(ticket.id, body, clientId, attachment)
         .then((message) => {
           setPending((current) => current.filter((p) => p.clientId !== clientId))
           append(message)
         })
-        .catch(() => {
+        .catch((err) => {
           setPending((current) =>
-            current.map((p) => (p.clientId === clientId ? { ...p, status: 'failed' } : p))
+            current.map((p) =>
+              p.clientId === clientId ? { ...p, status: 'failed', error: readableError(err) } : p
+            )
           )
         })
     },
     [append, ticket.id]
   )
 
+  const send = useCallback(
+    async (body: string, attachedFile: File | null) => {
+      const clientId = crypto.randomUUID()
+      const attachment = attachedFile
+        ? {
+            name: attachedFile.name,
+            mime: attachedFile.type,
+            bytes: new Uint8Array(await attachedFile.arrayBuffer())
+          }
+        : undefined
+
+      setPending((current) => [...current, { clientId, body, attachment, status: 'sending' }])
+      performSend(clientId, body, attachment)
+    },
+    [performSend]
+  )
+
   const retry = useCallback(
     (clientId: string) => {
       const entry = pending.find((p) => p.clientId === clientId)
       if (entry) {
-        send(entry.body, clientId)
+        setPending((current) =>
+          current.map((p) =>
+            p.clientId === clientId ? { ...p, status: 'sending', error: undefined } : p
+          )
+        )
+        performSend(clientId, entry.body, entry.attachment)
       }
     },
-    [pending, send]
+    [pending, performSend]
   )
+
+  // Drag and drop onto the whole thread, not just the composer - the reason a
+  // desktop client exists. A depth counter survives dragenter/dragleave firing on
+  // every child element underneath the cursor, which would otherwise flicker the
+  // drop-target state on and off as the pointer crosses message rows.
+  const onDragEnter = useCallback((event: DragEvent<HTMLDivElement>) => {
+    if (!event.dataTransfer.types.includes('Files')) {
+      return
+    }
+    event.preventDefault()
+    dragDepthRef.current += 1
+    setIsDragActive(true)
+  }, [])
+
+  const onDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
+    if (!event.dataTransfer.types.includes('Files')) {
+      return
+    }
+    // Required for the element to accept a drop at all.
+    event.preventDefault()
+  }, [])
+
+  const onDragLeave = useCallback((event: DragEvent<HTMLDivElement>) => {
+    if (!event.dataTransfer.types.includes('Files')) {
+      return
+    }
+    event.preventDefault()
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
+    if (dragDepthRef.current === 0) {
+      setIsDragActive(false)
+    }
+  }, [])
+
+  const onDrop = useCallback((event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    dragDepthRef.current = 0
+    setIsDragActive(false)
+    // One file per message: anything past the first is ignored rather than queued.
+    const dropped = event.dataTransfer.files[0]
+    if (dropped) {
+      setFile(dropped)
+    }
+  }, [])
 
   const history = data?.data ?? []
   const historyIds = new Set(history.map((message) => message.id))
@@ -122,7 +213,19 @@ export default function Thread({
   ]
 
   return (
-    <div className="screen">
+    <div
+      className={isDragActive ? 'screen screen-drag-active' : 'screen'}
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      {isDragActive && (
+        <div className="thread-dropzone-overlay" data-testid="thread-dropzone-active">
+          Drop file to attach
+        </div>
+      )}
+
       <header className="thread-header">
         <button type="button" data-testid="thread-back" onClick={onBack}>
           Back
@@ -168,6 +271,7 @@ export default function Thread({
               data-testid={`message-${message.id}`}
             >
               <span className="message-bubble">{message.body}</span>
+              <MessageAttachments attachments={message.attachments} />
               <span className="message-meta">
                 <span>{message.author.name}</span>
                 <time>{formatTimestamp(message.created_at)}</time>
@@ -184,10 +288,13 @@ export default function Thread({
               <span className="message-bubble">{entry.body}</span>
               <span className="message-meta">
                 {entry.status === 'sending' ? (
-                  <span>Sending…</span>
+                  <span className="message-meta-sending">
+                    <span className="upload-spinner" aria-hidden="true" />
+                    {entry.attachment ? `Uploading ${entry.attachment.name}…` : 'Sending…'}
+                  </span>
                 ) : (
                   <>
-                    <span className="message-meta-failed">Failed to send</span>
+                    <span className="message-meta-failed">{entry.error ?? 'Failed to send'}</span>
                     <button
                       type="button"
                       data-testid={`message-retry-${entry.clientId}`}
@@ -203,7 +310,15 @@ export default function Thread({
         </ul>
       )}
 
-      <MessageComposer onSend={send} />
+      <MessageComposer
+        file={file}
+        onFileChange={setFile}
+        onFileClear={() => setFile(null)}
+        onSend={(body, attachedFile) => {
+          send(body, attachedFile)
+          setFile(null)
+        }}
+      />
     </div>
   )
 }

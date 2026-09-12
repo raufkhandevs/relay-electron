@@ -12,6 +12,7 @@ body {
 }
 
 .screen {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -19,6 +20,28 @@ body {
   padding: 14px 18px;
   gap: 10px;
   overflow-y: auto;
+}
+
+/* Thread's drop-target state. An inset outline rather than a border so it never
+   shifts layout, and the overlay is pointer-events: none so it never steals the
+   drop event from the element that is actually listening for it. */
+.screen-drag-active {
+  outline: 2px dashed var(--accent);
+  outline-offset: -6px;
+}
+
+.thread-dropzone-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in oklab, var(--accent) 10%, transparent);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+  z-index: 5;
 }
 
 .screen-centered {
@@ -384,6 +407,12 @@ body {
   color: #b3261e;
 }
 
+.message-meta-sending {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .message-meta button {
   padding: 0;
   border: none;
@@ -392,6 +421,86 @@ body {
   font-size: 11px;
   text-decoration: underline;
   cursor: pointer;
+}
+
+.upload-spinner {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--rule);
+  border-top-color: var(--accent);
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Attachments. Images stay small at agent density - big enough to identify at a
+   glance, never big enough to push the rest of the thread out of view. */
+
+.message-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: inherit;
+}
+
+.attachment-image {
+  display: block;
+  max-width: 220px;
+  max-height: 160px;
+  border-radius: 6px;
+  border: 1px solid var(--rule);
+  object-fit: contain;
+}
+
+.attachment-image-loading {
+  display: block;
+  width: 120px;
+  height: 80px;
+  border-radius: 6px;
+  background: var(--rule);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.attachment-error,
+.attachment-file-error {
+  font-size: 11px;
+  color: #b3261e;
+}
+
+.attachment-file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.attachment-file-row:hover {
+  background: var(--ground);
+}
+
+.attachment-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-file-size {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
 }
 
 .message-row-skeleton {
@@ -410,10 +519,69 @@ body {
 
 .composer {
   display: flex;
-  align-items: flex-end;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   padding-top: 8px;
   border-top: 1px solid var(--rule);
+}
+
+.composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.composer-file-input {
+  display: none;
+}
+
+.composer-attach {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.composer-attach:hover {
+  background: var(--ground);
+}
+
+.composer-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--rule);
+  background: var(--ground);
+  font-size: 12px;
+}
+
+.composer-chip-name {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-chip-size {
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.composer-chip-remove {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .composer-input {

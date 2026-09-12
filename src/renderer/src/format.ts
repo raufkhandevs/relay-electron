@@ -39,3 +39,17 @@ export function formatTimestamp(iso: string): string {
   const isToday = date.toDateString() === new Date().toDateString()
   return (isToday ? timeFormatter : dateTimeFormatter).format(date)
 }
+
+const FILE_SIZE_UNITS = ['B', 'KB', 'MB', 'GB']
+
+/** "812 B", "48.3 KB", "1.4 MB" - for an attachment chip or file row. */
+export function formatFileSize(bytes: number): string {
+  let value = bytes
+  let unitIndex = 0
+  while (value >= 1024 && unitIndex < FILE_SIZE_UNITS.length - 1) {
+    value /= 1024
+    unitIndex += 1
+  }
+  const precision = unitIndex === 0 || value >= 10 ? 0 : 1
+  return `${value.toFixed(precision)} ${FILE_SIZE_UNITS[unitIndex]}`
+}

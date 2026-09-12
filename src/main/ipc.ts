@@ -14,6 +14,22 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 // oversized payload the API would reject anyway.
 const MAX_MESSAGE_LENGTH = 5000
 
+// Mirrors StoreMessageRequest::ALLOWED_ATTACHMENT_MIMES and its 'max:10240' rule.
+// The server judges the real content regardless of what is asserted here; this is
+// only a fast local rejection so an oversized or wrong-type file never leaves the
+// machine to be told no by the network instead.
+const ALLOWED_ATTACHMENT_MIMES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'application/pdf',
+  'text/plain'
+])
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
+
+type AttachmentPayload = { name: string; mime: string; bytes: Uint8Array }
+
 function assertPositiveInteger(value: unknown, label: string): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
     throw new Error(`${label} must be a positive integer`)
@@ -50,6 +66,23 @@ function assertUuid(value: unknown, label: string): string {
     throw new Error(`${label} must be a UUID`)
   }
   return value
+}
+
+function assertAttachment(value: unknown): AttachmentPayload {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error('file must be {name, mime, bytes}')
+  }
+  const { name, mime, bytes } = value as Record<string, unknown>
+  if (!(bytes instanceof Uint8Array) || bytes.byteLength === 0) {
+    throw new Error('file bytes must be a non-empty Uint8Array')
+  }
+  if (bytes.byteLength > MAX_ATTACHMENT_BYTES) {
+    throw new Error('file must be at most 10 MB')
+  }
+  if (typeof mime !== 'string' || !ALLOWED_ATTACHMENT_MIMES.has(mime)) {
+    throw new Error(`file type must be one of: ${[...ALLOWED_ATTACHMENT_MIMES].join(', ')}`)
+  }
+  return { name: assertString(name, 'file name'), mime, bytes }
 }
 
 export function registerIpcHandlers(): void {
@@ -105,13 +138,26 @@ export function registerIpcHandlers(): void {
     if (typeof payload !== 'object' || payload === null) {
       throw new Error('sendMessage requires {ticketId, body, idempotencyKey}')
     }
-    const { ticketId, body, idempotencyKey } = payload as Record<string, unknown>
+    const { ticketId, body, idempotencyKey, file } = payload as Record<string, unknown>
     const id = assertPositiveInteger(ticketId, 'ticketId')
-    return api.post<Message>(`/tickets/${id}/messages`, {
-      body: assertMessageBody(body),
-      idempotency_key: assertUuid(idempotencyKey, 'idempotencyKey')
-    })
+    const attachment = file === undefined || file === null ? undefined : assertAttachment(file)
+    return api.postMultipart<Message>(
+      `/tickets/${id}/messages`,
+      {
+        body: assertMessageBody(body),
+        idempotency_key: assertUuid(idempotencyKey, 'idempotencyKey')
+      },
+      attachment
+    )
   })
+
+  ipcMain.handle(
+    'relay:attachmentBytes',
+    async (_event, attachmentId: unknown): Promise<Uint8Array> => {
+      const id = assertPositiveInteger(attachmentId, 'attachmentId')
+      return api.getBinary(`/attachments/${id}`)
+    }
+  )
 
   ipcMain.handle('relay:channelAuth', async (_event, payload: unknown): Promise<unknown> => {
     if (typeof payload !== 'object' || payload === null) {
