@@ -7,6 +7,12 @@ import type { CursorPaginated, Message, Paginated, Ticket, User } from '../share
 // input, not a trusted caller, even though it is our own code.
 
 const CHANNEL_NAME_RE = /^private-ticket\.\d+$/
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+// Mirrors StoreMessageRequest::rules() in the Laravel API (backend-laravel). The
+// server is the real boundary; this bound just fails fast instead of shipping an
+// oversized payload the API would reject anyway.
+const MAX_MESSAGE_LENGTH = 5000
 
 function assertPositiveInteger(value: unknown, label: string): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
@@ -25,6 +31,23 @@ function assertString(value: unknown, label: string): string {
 function assertChannelName(value: unknown): string {
   if (typeof value !== 'string' || !CHANNEL_NAME_RE.test(value)) {
     throw new Error('channelName must match private-ticket.<digits>')
+  }
+  return value
+}
+
+function assertMessageBody(value: unknown): string {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error('body must be a non-empty string')
+  }
+  if (value.length > MAX_MESSAGE_LENGTH) {
+    throw new Error(`body must be at most ${MAX_MESSAGE_LENGTH} characters`)
+  }
+  return value
+}
+
+function assertUuid(value: unknown, label: string): string {
+  if (typeof value !== 'string' || !UUID_RE.test(value)) {
+    throw new Error(`${label} must be a UUID`)
   }
   return value
 }
@@ -77,6 +100,18 @@ export function registerIpcHandlers(): void {
       return api.get<CursorPaginated<Message>>(`/tickets/${id}/messages`)
     }
   )
+
+  ipcMain.handle('relay:sendMessage', async (_event, payload: unknown): Promise<Message> => {
+    if (typeof payload !== 'object' || payload === null) {
+      throw new Error('sendMessage requires {ticketId, body, idempotencyKey}')
+    }
+    const { ticketId, body, idempotencyKey } = payload as Record<string, unknown>
+    const id = assertPositiveInteger(ticketId, 'ticketId')
+    return api.post<Message>(`/tickets/${id}/messages`, {
+      body: assertMessageBody(body),
+      idempotency_key: assertUuid(idempotencyKey, 'idempotencyKey')
+    })
+  })
 
   ipcMain.handle('relay:channelAuth', async (_event, payload: unknown): Promise<unknown> => {
     if (typeof payload !== 'object' || payload === null) {

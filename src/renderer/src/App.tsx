@@ -5,24 +5,25 @@ import { disconnectEcho } from './echo'
 import Login from './screens/Login'
 import Queue from './screens/Queue'
 import Thread from './screens/Thread'
-import type { User } from '../../shared/types'
+import type { Ticket, User } from '../../shared/types'
 
 function AppShell(): React.JSX.Element {
   const [user, setUser] = useState<User | null>(null)
-  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null)
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
 
   if (!user) {
     return <Login onSignedIn={setUser} />
   }
 
-  if (selectedTicketId !== null) {
+  if (selectedTicket) {
     // Keyed by ticketId so switching tickets remounts the thread instead of
     // carrying the previous ticket's live-message state into the new one.
     return (
       <Thread
-        key={selectedTicketId}
-        ticketId={selectedTicketId}
-        onBack={() => setSelectedTicketId(null)}
+        key={selectedTicket.id}
+        ticket={selectedTicket}
+        user={user}
+        onBack={() => setSelectedTicket(null)}
       />
     )
   }
@@ -30,12 +31,12 @@ function AppShell(): React.JSX.Element {
   return (
     <Queue
       user={user}
-      selectedTicketId={selectedTicketId}
-      onSelectTicket={setSelectedTicketId}
+      selectedTicketId={null}
+      onSelectTicket={setSelectedTicket}
       onSignedOut={() => {
         disconnectEcho()
         setUser(null)
-        setSelectedTicketId(null)
+        setSelectedTicket(null)
       }}
     />
   )

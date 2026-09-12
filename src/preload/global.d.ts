@@ -6,6 +6,7 @@ export interface RelayApi {
   me: () => Promise<User>
   tickets: () => Promise<Paginated<Ticket>>
   messages: (ticketId: number) => Promise<CursorPaginated<Message>>
+  sendMessage: (ticketId: number, body: string, idempotencyKey: string) => Promise<Message>
   channelAuth: (socketId: string, channelName: string) => Promise<unknown>
 }
 

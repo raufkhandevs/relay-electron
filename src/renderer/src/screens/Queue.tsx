@@ -1,6 +1,8 @@
 import { readableError, useSignOut, useTickets } from '../queries'
 import { useDelayedFlag } from '../hooks'
-import type { User } from '../../../shared/types'
+import { formatRelativeTime } from '../format'
+import { TICKET_STATUS_LABEL } from '../ticket-status'
+import type { Ticket, User } from '../../../shared/types'
 
 const SKELETON_ROWS = 5
 
@@ -12,7 +14,7 @@ export default function Queue({
 }: {
   user: User
   selectedTicketId: number | null
-  onSelectTicket: (ticketId: number) => void
+  onSelectTicket: (ticket: Ticket) => void
   onSignedOut: () => void
 }): React.JSX.Element {
   const { data, isPending, isError, error, refetch } = useTickets()
@@ -73,15 +75,16 @@ export default function Queue({
             <li key={ticket.id}>
               <button
                 type="button"
-                className="ticket-row"
+                className={`ticket-row ticket-row-${ticket.status}`}
                 aria-current={ticket.id === selectedTicketId}
                 data-testid={`ticket-row-${ticket.id}`}
-                onClick={() => onSelectTicket(ticket.id)}
+                title={TICKET_STATUS_LABEL[ticket.status]}
+                onClick={() => onSelectTicket(ticket)}
               >
                 <span className="ticket-id">TKT-{ticket.id}</span>
                 <span className="ticket-subject">{ticket.subject}</span>
-                <span className={`ticket-status ticket-status-${ticket.status}`}>
-                  {ticket.status}
+                <span className="ticket-activity">
+                  {formatRelativeTime(ticket.last_message_at ?? ticket.created_at)}
                 </span>
               </button>
             </li>

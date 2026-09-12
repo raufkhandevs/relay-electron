@@ -13,6 +13,8 @@ const relay = {
   tickets: (): Promise<Paginated<Ticket>> => ipcRenderer.invoke('relay:tickets'),
   messages: (ticketId: number): Promise<CursorPaginated<Message>> =>
     ipcRenderer.invoke('relay:messages', ticketId),
+  sendMessage: (ticketId: number, body: string, idempotencyKey: string): Promise<Message> =>
+    ipcRenderer.invoke('relay:sendMessage', { ticketId, body, idempotencyKey }),
   channelAuth: (socketId: string, channelName: string): Promise<unknown> =>
     ipcRenderer.invoke('relay:channelAuth', { socketId, channelName })
 }

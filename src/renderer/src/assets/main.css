@@ -15,8 +15,9 @@ body {
   display: flex;
   flex-direction: column;
   flex: 1;
-  padding: 24px 32px;
-  gap: 16px;
+  min-height: 0;
+  padding: 14px 18px;
+  gap: 10px;
   overflow-y: auto;
 }
 
@@ -25,49 +26,62 @@ body {
   justify-content: center;
 }
 
-/* Login */
+/* Login. The one screen an agent is not scanning, so it is the one place
+   this compact surface spends a card: radius, border and a soft shadow. */
 
 .login-card {
   display: flex;
   flex-direction: column;
   gap: 8px;
   width: 100%;
-  max-width: 320px;
+  max-width: 300px;
+  padding: 24px;
+  border-radius: 10px;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  box-shadow: 0 1px 3px color-mix(in oklab, var(--ink) 8%, transparent);
 }
 
 .login-card h1 {
-  margin-bottom: 16px;
-  font-size: 24px;
+  margin-bottom: 14px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .login-card label {
-  font-size: 13px;
-  color: var(--ev-c-text-2);
+  font-size: 12px;
+  color: var(--muted);
 }
 
 .login-card input {
-  padding: 8px 10px;
+  padding: 7px 9px;
   border-radius: 6px;
-  border: 1px solid var(--ev-c-gray-2);
-  background: var(--color-background-soft);
-  color: var(--color-text);
-  font-size: 14px;
+  border: 1px solid var(--rule);
+  background: var(--ground);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.login-card input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .login-card button {
-  margin-top: 16px;
-  padding: 10px;
+  margin-top: 14px;
+  padding: 8px;
   border-radius: 6px;
   border: none;
-  background: var(--ev-button-alt-bg);
-  color: var(--ev-button-alt-text);
-  font-size: 14px;
+  background: var(--accent);
+  color: var(--surface);
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .login-card button:hover:not(:disabled) {
-  background: var(--ev-button-alt-hover-bg);
+  background: color-mix(in oklab, var(--accent) 85%, black);
 }
 
 .login-card button:disabled {
@@ -75,26 +89,39 @@ body {
   cursor: default;
 }
 
-/* Queue */
+/* Queue. An agent lives here for a whole shift: rows stay dense, the id
+   stays legible for calls, and status is the left edge, not a word. */
 
 .queue-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding-bottom: 4px;
+}
+
+.queue-header h1 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .queue-subtitle {
-  color: var(--ev-c-text-2);
-  font-size: 13px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .queue-header button {
-  padding: 8px 16px;
+  padding: 5px 12px;
   border-radius: 6px;
-  border: 1px solid var(--ev-c-gray-2);
-  background: transparent;
-  color: var(--color-text);
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
   cursor: pointer;
+}
+
+.queue-header button:hover:not(:disabled) {
+  background: var(--ground);
 }
 
 .queue-header button:disabled {
@@ -105,31 +132,48 @@ body {
 .ticket-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  border-top: 1px solid var(--rule);
 }
 
 .ticket-row {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   width: 100%;
-  height: 52px;
-  padding: 0 16px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: var(--color-background-soft);
-  color: var(--color-text);
-  font-size: 14px;
+  height: 32px;
+  padding: 0 10px 0 8px;
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  border-left: 3px solid transparent;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
   text-align: left;
   cursor: pointer;
 }
 
 .ticket-row:hover {
-  background: var(--color-background-mute);
+  background: var(--ground);
 }
 
 .ticket-row[aria-current='true'] {
-  border-color: var(--ev-c-gray-1);
+  background: color-mix(in oklab, var(--accent) 8%, var(--surface));
+}
+
+.ticket-row-open {
+  border-left-color: var(--status-open);
+}
+
+.ticket-row-pending {
+  border-left-color: var(--status-pending);
+}
+
+.ticket-row-resolved {
+  border-left-color: var(--status-resolved);
+}
+
+.ticket-row-closed {
+  border-left-color: var(--status-closed);
 }
 
 .ticket-row-skeleton {
@@ -137,18 +181,14 @@ body {
 }
 
 .ticket-row-skeleton:hover {
-  background: var(--color-background-soft);
+  background: var(--surface);
 }
 
 .ticket-id {
-  flex: 0 0 80px;
-  color: var(--ev-c-text-2);
-  font-family:
-    ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
-  font-size: 12px;
+  flex: 0 0 56px;
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
 }
 
 .ticket-subject {
@@ -158,25 +198,23 @@ body {
   white-space: nowrap;
 }
 
-.ticket-status {
-  flex: 0 0 auto;
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  text-transform: capitalize;
-  background: var(--color-background-mute);
-  color: var(--ev-c-text-2);
+.ticket-activity {
+  flex: 0 0 68px;
+  text-align: right;
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
 }
 
 .skeleton-block {
-  height: 12px;
-  border-radius: 4px;
-  background: var(--color-background-mute);
+  height: 10px;
+  border-radius: 3px;
+  background: var(--rule);
   animation: skeleton-pulse 1.2s ease-in-out infinite;
 }
 
 .skeleton-id {
-  flex: 0 0 60px;
+  flex: 0 0 44px;
 }
 
 .skeleton-subject {
@@ -184,7 +222,7 @@ body {
 }
 
 .skeleton-status {
-  flex: 0 0 60px;
+  flex: 0 0 44px;
 }
 
 @keyframes skeleton-pulse {
@@ -204,25 +242,26 @@ body {
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
-  padding: 16px;
-  border-radius: 8px;
-  background: var(--color-background-soft);
-  color: var(--ev-c-text-2);
-  font-size: 14px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .state-message button {
-  padding: 6px 14px;
+  padding: 5px 12px;
   border-radius: 6px;
-  border: 1px solid var(--ev-c-gray-2);
-  background: transparent;
-  color: var(--color-text);
+  border: 1px solid var(--rule);
+  background: var(--ground);
+  color: var(--ink);
   cursor: pointer;
 }
 
 .error-message {
-  color: #e0777d;
-  font-size: 13px;
+  color: #b3261e;
+  font-size: 12px;
 }
 
 /* Thread */
@@ -230,60 +269,188 @@ body {
 .thread-header {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.thread-header-edge {
+  flex: 0 0 3px;
+  align-self: stretch;
+  min-height: 22px;
+  border-radius: 2px;
+}
+
+.thread-header-edge-open {
+  background: var(--status-open);
+}
+
+.thread-header-edge-pending {
+  background: var(--status-pending);
+}
+
+.thread-header-edge-resolved {
+  background: var(--status-resolved);
+}
+
+.thread-header-edge-closed {
+  background: var(--status-closed);
+}
+
+.thread-header-titles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.thread-header-titles h1 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-id {
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--muted);
 }
 
 .thread-header button {
-  padding: 6px 14px;
+  padding: 5px 10px;
   border-radius: 6px;
-  border: 1px solid var(--ev-c-gray-2);
-  background: transparent;
-  color: var(--color-text);
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
   cursor: pointer;
+}
+
+.thread-header button:hover {
+  background: var(--ground);
 }
 
 .message-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   flex: 1;
   overflow-y: auto;
+  padding: 4px 0;
 }
 
 .message {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  max-width: 70%;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: var(--color-background-soft);
+  gap: 2px;
+  max-width: 72%;
   align-self: flex-start;
 }
 
 .message-agent {
   align-self: flex-end;
-  background: var(--ev-button-alt-bg);
 }
 
-.message-author {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ev-c-text-2);
-}
-
-.message-body {
-  font-size: 14px;
+.message-bubble {
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  font-size: 13px;
   white-space: pre-wrap;
 }
 
+.message-agent .message-bubble {
+  border-color: transparent;
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+}
+
+.message-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 2px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.message-meta time {
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.message-meta-failed {
+  color: #b3261e;
+}
+
+.message-meta button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .message-row-skeleton {
-  height: 52px;
-  border-radius: 10px;
-  background: var(--color-background-soft);
+  height: 36px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
 }
 
 .message-row-skeleton .skeleton-block {
   height: 100%;
-  border-radius: 10px;
+  border-radius: 6px;
+}
+
+/* Composer */
+
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+}
+
+.composer-input {
+  flex: 1;
+  min-height: 44px;
+  max-height: 120px;
+  padding: 7px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.4;
+  resize: none;
+}
+
+.composer-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.composer-send {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent);
+  color: var(--surface);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.composer-send:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--accent) 85%, black);
+}
+
+.composer-send:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
