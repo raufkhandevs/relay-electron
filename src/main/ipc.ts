@@ -51,9 +51,15 @@ function assertChannelName(value: unknown): string {
   return value
 }
 
-function assertMessageBody(value: unknown): string {
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new Error('body must be a non-empty string')
+// Mirrors the API's `nullable, required_without:file` rule: a message needs a body,
+// a file, or both. An empty body is valid when a file comes with it, because a photo
+// often needs no caption.
+function assertMessageBody(value: unknown, hasAttachment: boolean): string {
+  if (typeof value !== 'string') {
+    throw new Error('body must be a string')
+  }
+  if (value.trim().length === 0 && !hasAttachment) {
+    throw new Error('body is required when no file is attached')
   }
   if (value.length > MAX_MESSAGE_LENGTH) {
     throw new Error(`body must be at most ${MAX_MESSAGE_LENGTH} characters`)
@@ -144,7 +150,7 @@ export function registerIpcHandlers(): void {
     return api.postMultipart<Message>(
       `/tickets/${id}/messages`,
       {
-        body: assertMessageBody(body),
+        body: assertMessageBody(body, attachment !== undefined),
         idempotency_key: assertUuid(idempotencyKey, 'idempotencyKey')
       },
       attachment

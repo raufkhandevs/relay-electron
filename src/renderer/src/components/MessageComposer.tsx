@@ -16,9 +16,11 @@ export default function MessageComposer({
   const [body, setBody] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const trimmed = body.trim()
+  // Text, a file, or both. The API requires a body only when no file is present.
+  const canSend = trimmed.length > 0 || file !== null
 
   function submit(): void {
-    if (!trimmed) {
+    if (!canSend) {
       return
     }
     onSend(trimmed, file)
@@ -72,7 +74,7 @@ export default function MessageComposer({
           data-testid="composer-send"
           className="composer-send"
           onClick={submit}
-          disabled={!trimmed}
+          disabled={!canSend}
         >
           Send
         </button>
