@@ -15,8 +15,8 @@ Ticket queue and thread   ██████████████████
 Live messages             ████████████████████  done
 Reply and drag-drop files ████████████████████  done
 Light and dark            ████████████████████  done
-Typing indicator          ░░░░░░░░░░░░░░░░░░░░  next
-Tray, badge, hotkey       ░░░░░░░░░░░░░░░░░░░░
+Typing indicator          ████████████████████  done
+Tray, badge, hotkey       ░░░░░░░░░░░░░░░░░░░░  next
 Auto-update               ░░░░░░░░░░░░░░░░░░░░  blocked
 ```
 
