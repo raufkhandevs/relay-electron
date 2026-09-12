@@ -1,7 +1,7 @@
 # Relay agent console
 
 The desktop client for Relay, a support desk. An agent signs in, works the ticket queue, opens a
-thread, and sees a customer's message arrive without refreshing anything.
+thread, replies, and sees a customer's message arrive without refreshing anything.
 
 One of four repos. The parent, [raufkhandevs/relay](https://github.com/raufkhandevs/relay), holds
 the design and decision records. The API and websocket server are in
@@ -97,3 +97,9 @@ parent repo's `~/.claude/skills/electron-package-sign`.
   fully qualified PHP class name and matches nothing, silently.
 - **Realtime silently does nothing** if Reverb is not running. It is one of four processes in the
   backend's `composer dev`.
+
+## Design
+
+Palette, type and the status-edge device are shared with the other two clients and defined in
+the parent repo's `docs/decisions/0009-one-design-system-two-densities.md`. The customer surfaces
+run the system roomy; the agent console runs it compact.
